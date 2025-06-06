@@ -25,7 +25,7 @@
 uint256 public constant MIN_BID_INCREASE_PERCENT = 5; // 5% minimum increase
 uint256 public constant COMMISSION_PERCENT = 2; // 2% owner commission
 uint256 public constant EXTENSION_DURATION = 10 minutes;
-
+```
 
 ## Events 
 | Event Name               | Parameters                          | Description                                                                 |
