@@ -7,19 +7,19 @@ pragma solidity ^0.8.0;
  * @notice Implements an auction system.
  */
 contract Auctionator {
-    // Public state variables
-    address public immutable owner;
-    uint256 public auctionEndTime;
-    uint256 public immutable initialDuration;
-    uint256 public highestBid;
-    address public highestBidder;
-    bool public auctionEnded;
-
     // Constants
     uint256 public constant MIN_BID_INCREASE_PERCENT = 5;
     uint256 public constant COMMISSION_PERCENT = 2;
     uint256 public constant EXTENSION_DURATION = 10 minutes;
     uint256 public constant EXTENSION_THRESHOLD = 10 minutes;
+
+    // Public state variables
+    address public immutable owner;
+    uint256 public immutable initialDuration;
+    uint256 public auctionEndTime;
+    uint256 public highestBid;
+    address public highestBidder;
+    bool public auctionEnded;
 
     // Data structures
     struct Bid {
@@ -41,23 +41,23 @@ contract Auctionator {
 
     // Modifiers
     modifier onlyOwner() {
-        require(msg.sender == owner, "Caller is not the auction owner");
+        require(msg.sender == owner, "Not owner");
         _;
     }
 
     modifier whenAuctionActive() {
-        require(block.timestamp <= auctionEndTime, "Auction has concluded");
-        require(!auctionEnded, "Auction was manually concluded");
+        require(block.timestamp <= auctionEndTime, "Ended");
+        require(!auctionEnded, "Manually ended");
         _;
     }
 
     modifier whenAuctionEnded() {
-        require(block.timestamp > auctionEndTime || auctionEnded, "Auction still active");
+        require(block.timestamp > auctionEndTime || auctionEnded, "Still active");
         _;
     }
 
     modifier onlyNonWinner() {
-        require(msg.sender != highestBidder, "Winner cannot perform this action");
+        require(msg.sender != highestBidder, "Is winner");
         _;
     }
 
@@ -67,8 +67,8 @@ contract Auctionator {
      * @notice Contract deployer becomes the owner
      */
     constructor(uint256 durationInSeconds) {
-        require(durationInSeconds >= EXTENSION_THRESHOLD, "Duration too short");
-        
+        require(durationInSeconds >= EXTENSION_THRESHOLD, "Short duration");
+
         owner = msg.sender;
         initialDuration = durationInSeconds;
         auctionEndTime = block.timestamp + durationInSeconds;
@@ -80,29 +80,20 @@ contract Auctionator {
      * @notice Extends auction by 10 minutes if placed within last 10 minutes
      */
     function placeBid() external payable whenAuctionActive {
-        require(msg.value > 0, "Bid value must be positive");
+        uint256 currentHighest = highestBid;
+        uint256 minRequiredBid = currentHighest + (currentHighest * MIN_BID_INCREASE_PERCENT / 100);
 
-        // Calculate minimum required bid
-        uint256 minRequiredBid = highestBid + (highestBid * MIN_BID_INCREASE_PERCENT / 100);
-        
-        // First bid has no minimum
-        if (highestBid == 0) {
+        if (currentHighest == 0) {
             minRequiredBid = 0;
         }
 
-        require(
-            msg.value > minRequiredBid,
-            "Bid must exceed current highest by at least 5%"
-        );
+        require(msg.value > minRequiredBid, "Too low");
 
-        // Record the bid
         uint256 bidIndex = _bidIndices[msg.sender];
         if (bidIndex > 0) {
-            // Existing bidder - update their bid
             Bid storage existingBid = bidHistory[bidIndex - 1];
             existingBid.amount += msg.value;
         } else {
-            // New bidder
             bidHistory.push(Bid({
                 bidder: msg.sender,
                 amount: msg.value,
@@ -111,13 +102,11 @@ contract Auctionator {
             _bidIndices[msg.sender] = bidHistory.length;
         }
 
-        // Update highest bid
         highestBid = msg.value;
         highestBidder = msg.sender;
 
-        // Extend auction if needed
         bool extended = _extendAuctionIfNeeded();
-        
+
         emit NewBid(msg.sender, msg.value, auctionEndTime);
         if (extended) {
             emit AuctionExtended(auctionEndTime);
@@ -129,36 +118,35 @@ contract Auctionator {
      * @dev Transfers winning amount (minus commission) to owner
      */
     function concludeAuction() external whenAuctionEnded {
-        require(!auctionEnded, "Auction already concluded");
-        
+        require(!auctionEnded, "Already done");
+
         auctionEnded = true;
 
-        if (highestBid > 0) {
-            uint256 commission = (highestBid * COMMISSION_PERCENT) / 100;
-            uint256 ownerProceeds = highestBid - commission;
-            
+        uint256 winningBid = highestBid;
+        if (winningBid > 0) {
+            uint256 commission = (winningBid * COMMISSION_PERCENT) / 100;
+            uint256 ownerProceeds = winningBid - commission;
             payable(owner).transfer(ownerProceeds);
         }
 
-        emit AuctionConcluded(highestBidder, highestBid);
+        emit AuctionConcluded(highestBidder, winningBid);
     }
 
     /**
-     * @notice Allows losers to withdraw full bids
-     * @dev Only available after auction concludes
+     * @notice Allows the owner to refund all non-winning participants
+     * @dev Sends back each user's bid minus 2% commission
      */
-    function withdrawFull() external whenAuctionEnded onlyNonWinner {
-        uint256 bidIndex = _bidIndices[msg.sender];
-        require(bidIndex > 0, "No bids placed by caller");
+    function withdrawFull() external onlyOwner whenAuctionEnded {
+        for (uint256 i = 0; i < bidHistory.length; i++) {
+            Bid storage bid = bidHistory[i];
 
-        Bid storage userBid = bidHistory[bidIndex - 1];
-        require(!userBid.withdrawn, "Funds already withdrawn");
-
-        userBid.withdrawn = true;
-        uint256 amount = userBid.amount;
-
-        payable(msg.sender).transfer(amount);
-        emit FullWithdrawal(msg.sender, amount);
+            if (!bid.withdrawn && bid.bidder != highestBidder) {
+                bid.withdrawn = true;
+                uint256 refund = bid.amount - ((bid.amount * COMMISSION_PERCENT) / 100);
+                payable(bid.bidder).transfer(refund);
+                emit FullWithdrawal(bid.bidder, refund);
+            }
+        }
     }
 
     /**
@@ -167,24 +155,16 @@ contract Auctionator {
      * @dev Remaining amount must cover user's last bid
      */
     function withdrawPartial(uint256 amountToWithdraw) external whenAuctionActive {
-        require(amountToWithdraw > 0, "Withdrawal amount must be positive");
+        require(amountToWithdraw > 0, "Zero amt");
 
         uint256 bidIndex = _bidIndices[msg.sender];
-        require(bidIndex > 0, "No bids placed by caller");
+        require(bidIndex > 0, "No bids");
 
         Bid storage userBid = bidHistory[bidIndex - 1];
-        
-        uint256 minRequiredBalance = (msg.sender == highestBidder) ? highestBid : 0;
-        
-        require(
-            userBid.amount > minRequiredBalance,
-            "No excess funds available"
-        );
-        
-        require(
-            userBid.amount - amountToWithdraw >= minRequiredBalance,
-            "Withdrawal exceeds available excess"
-        );
+        uint256 requiredBalance = msg.sender == highestBidder ? highestBid : 0;
+
+        require(userBid.amount > requiredBalance, "No excess");
+        require(userBid.amount - amountToWithdraw >= requiredBalance, "Exceeds");
 
         userBid.amount -= amountToWithdraw;
         payable(msg.sender).transfer(amountToWithdraw);
@@ -197,7 +177,7 @@ contract Auctionator {
      * @return winningAmount Winning bid amount
      */
     function getWinnerInfo() external view returns (address winnerAddress, uint256 winningAmount) {
-        require(auctionEnded, "Auction not yet concluded");
+        require(auctionEnded, "Not over");
         return (highestBidder, highestBid);
     }
 

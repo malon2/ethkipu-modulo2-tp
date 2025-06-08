@@ -403,7 +403,7 @@
 					"details": "Each new bid must be at least 5% higher than previous"
 				},
 				"withdrawFull()": {
-					"details": "Only available after auction concludes"
+					"details": "Sends back each user's bid minus 2% commission"
 				},
 				"withdrawPartial(uint256)": {
 					"details": "Remaining amount must cover user's last bid",
@@ -437,7 +437,7 @@
 					"notice": "Allows participants to place bidsExtends auction by 10 minutes if placed within last 10 minutes"
 				},
 				"withdrawFull()": {
-					"notice": "Allows losers to withdraw full bids"
+					"notice": "Allows the owner to refund all non-winning participants"
 				},
 				"withdrawPartial(uint256)": {
 					"notice": "Allows partial withdrawal during auction"
@@ -464,11 +464,11 @@
 	},
 	"sources": {
 		"Auctionator.sol": {
-			"keccak256": "0xb97244c04a35114a3e02909f8bdeb40e72e3a882ee47215fa6453a1de8c90dc8",
+			"keccak256": "0x4ed8d5ad6c51dffd714d3350655ffb2bc6a858efd68e5410871159068602d630",
 			"license": "MIT",
 			"urls": [
-				"bzz-raw://7d8b37ec8ecf46c819004640e9363351564a5e0c58160a7f6f27431aa972b58f",
-				"dweb:/ipfs/QmTW3QjK5LNdQVs4XsVG3Z1b86t9oVTjJzQ3pceNW4fYUM"
+				"bzz-raw://bd7646ad2ab2398208259856894565c09538b4af4445b1ac6c6df8d040379b09",
+				"dweb:/ipfs/QmUEJkETufcQigdni9XrEFuL9UtZNd7Xh52nSdQKXtub2W"
 			]
 		}
 	},
