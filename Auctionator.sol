@@ -173,8 +173,7 @@ contract Auctionator {
 
     /**
      * @notice Gets winner information
-     * @return winnerAddress Winner's address
-     * @return winningAmount Winning bid amount
+     * @return winnerAddress Winner's address and bid amount
      */
     function getWinnerInfo() external view returns (address winnerAddress, uint256 winningAmount) {
         require(auctionEnded, "Not over");

@@ -395,8 +395,7 @@
 				},
 				"getWinnerInfo()": {
 					"returns": {
-						"winnerAddress": "Winner's address",
-						"winningAmount": "Winning bid amount"
+						"winnerAddress": "Winner's address and bid amount"
 					}
 				},
 				"placeBid()": {
@@ -464,11 +463,11 @@
 	},
 	"sources": {
 		"Auctionator.sol": {
-			"keccak256": "0x4ed8d5ad6c51dffd714d3350655ffb2bc6a858efd68e5410871159068602d630",
+			"keccak256": "0xaaf78fa9b6ae83fd5e8fd7e7bfe66f0defb627f7fbb11a13ac451cc10b6a5da7",
 			"license": "MIT",
 			"urls": [
-				"bzz-raw://bd7646ad2ab2398208259856894565c09538b4af4445b1ac6c6df8d040379b09",
-				"dweb:/ipfs/QmUEJkETufcQigdni9XrEFuL9UtZNd7Xh52nSdQKXtub2W"
+				"bzz-raw://f6d449906b182a7025ab701966ad3a6a9fc7c8c4583e02b5f4e8669d6e1f3bbe",
+				"dweb:/ipfs/QmRcPg3wcedJTqZbfLb78zvpdBkV9burdW9yvKBD5PhRDd"
 			]
 		}
 	},
